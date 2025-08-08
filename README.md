@@ -18,7 +18,6 @@ App will be available at `http://localhost:3000`
 - React.js
 - Material UI
 - React Hook Form
-- Day.js
 - HTML5 / CSS3
 - JavaScript (ES6+)
 
