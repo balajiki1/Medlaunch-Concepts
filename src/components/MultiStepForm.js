@@ -222,7 +222,7 @@ function MultiStepForm() {
       applicationDate: '',
       thrombolytics: [],
       thrombectomies: []
-    }); // ✅ Reset to initial state
+    }); //  Reset to initial state
     setStep(1);
     setIsCertified(false);
   }}

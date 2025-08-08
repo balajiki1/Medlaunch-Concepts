@@ -154,11 +154,10 @@ const Step3 = forwardRef(({ formData, handleChange }, ref) => {
           />
         </Grid>
         <Grid item xs={12} sm={4}>
-          <InputLabel shrink>State *</InputLabel>
+          <InputLabel shrink>State</InputLabel>
           <Controller
             name="invoiceState"
             control={control}
-            rules={{ required: 'State is required' }}
             render={({ field }) => (
               <Select {...field} displayEmpty fullWidth error={!!errors.invoiceState}>
                 <MenuItem value="">Select State</MenuItem>
@@ -169,6 +168,7 @@ const Step3 = forwardRef(({ formData, handleChange }, ref) => {
               </Select>
             )}
           />
+
         </Grid>
         <Grid item xs={12} sm={4}>
           <InputLabel shrink>ZIP Code *</InputLabel>
