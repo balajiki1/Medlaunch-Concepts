@@ -13,6 +13,11 @@ App will be available at `http://localhost:3000`
 
 ---
 
+🌐 Live Demo
+Check out the live version of the app here:
+🔗 https://balajiki1.github.io/Medlaunch-Concepts/
+Deployed using GitHub Pages
+
 ## 🛠️ Tech Stack Used
 
 - React.js
