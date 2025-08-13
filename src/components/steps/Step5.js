@@ -41,11 +41,10 @@ const Step5 = forwardRef(({ formData, handleChange }, ref) => {
 
   useImperativeHandle(ref, () => ({
     validateForm: async () => {
-      const ok = await trigger(); // no required fields atm; keep for future rules
+      const ok = await trigger();
       if (!ok) return false;
 
       const dates = getValues();
-      // Push everything to parent only on Continue
       handleChange('services')({ target: { value: selectedServices } });
       handleChange('otherServices')({ target: { value: otherServices } });
       handleChange('selectedStandards')({ target: { value: selectedStandards } });
@@ -80,14 +79,12 @@ const Step5 = forwardRef(({ formData, handleChange }, ref) => {
   };
   const removeDateChip = (setter, arr, val) => setter(arr.filter((d) => d !== val));
 
-  // Simple tab -> group filter mapping (adjust as your catalog grows)
   const tabFilterFn = useMemo(() => {
     const label = tabLabels[tabIndex];
     if (label === 'All Services') return () => true;
     if (label === 'Diagnostic') return (group) => /diagnostic/i.test(group);
-    if (label === 'Surgical') return (group) => /cardiac/i.test(group); // proxy for surgical offerings
+    if (label === 'Surgical') return (group) => /cardiac/i.test(group);
     if (label === 'Clinical') return (group) => /(emergency|critical|cardiac)/i.test(group);
-    // For other tabs without specific mapping yet, show nothing by default:
     return () => false;
   }, [tabIndex]);
 
@@ -118,7 +115,7 @@ const Step5 = forwardRef(({ formData, handleChange }, ref) => {
     <div className={styles.stepBox}>
       <h3 className={styles.sectionTitle}>Services &amp; Certifications</h3>
 
-      {/* Service Offering (no outer card) */}
+      {/* Service Offering */}
       <div style={{ marginBottom: 16 }}>
         <div className={styles.inputLabel} style={{ fontWeight: 600, marginBottom: 6 }}>
           Service Offering
@@ -213,17 +210,25 @@ const Step5 = forwardRef(({ formData, handleChange }, ref) => {
         </div>
       </div>
 
-      {/* Standards to Apply (no outer card) */}
+      {/* Standards to Apply */}
       <div style={{ marginBottom: 16 }}>
         <div className={styles.inputLabel} style={{ marginBottom: 6 }}>
           Standards to Apply
         </div>
 
         <div className={styles.multiSelectWrap}>
-          <button
-            type="button"
+          {/* CHANGED from <button> to <div role="button"> to avoid nested buttons */}
+          <div
+            role="button"
+            tabIndex={0}
             className={styles.multiSelectControl}
             onClick={() => setMsOpen((v) => !v)}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter' || e.key === ' ') {
+                e.preventDefault();
+                setMsOpen((v) => !v);
+              }
+            }}
             aria-expanded={msOpen}
             aria-haspopup="listbox"
           >
@@ -242,6 +247,7 @@ const Step5 = forwardRef(({ formData, handleChange }, ref) => {
                         e.stopPropagation();
                         toggleStandard(s);
                       }}
+                      aria-label={`Remove ${s}`}
                     >
                       ×
                     </button>
@@ -250,7 +256,8 @@ const Step5 = forwardRef(({ formData, handleChange }, ref) => {
               </div>
             )}
             <span className={`${styles.inputIcon} ${styles.inputIconBig}`} aria-hidden>▾</span>
-          </button>
+          </div>
+
           {msOpen && (
             <div role="listbox" className={styles.msPanel}>
               {standards.map((s) => (
@@ -284,7 +291,7 @@ const Step5 = forwardRef(({ formData, handleChange }, ref) => {
         </div>
       </div>
 
-      {/* Thrombolytics (no outer card) */}
+      {/* Thrombolytics */}
       <div style={{ marginBottom: 16 }}>
         <div className={styles.inputLabel} style={{ fontWeight: 600, marginBottom: 8 }}>
           Dates of last twenty-five thrombolytic administrations
@@ -303,6 +310,7 @@ const Step5 = forwardRef(({ formData, handleChange }, ref) => {
                   type="button"
                   className={styles.chipClose}
                   onClick={() => removeDateChip(setThrombolytics, thrombolytics, d)}
+                  aria-label={`Remove date ${fmt(d)}`}
                 >
                   ×
                 </button>
@@ -312,7 +320,7 @@ const Step5 = forwardRef(({ formData, handleChange }, ref) => {
         )}
       </div>
 
-      {/* Thrombectomies (no outer card) */}
+      {/* Thrombectomies */}
       <div>
         <div className={styles.inputLabel} style={{ fontWeight: 600, marginBottom: 8 }}>
           Dates of last fifteen thrombectomies
@@ -331,6 +339,7 @@ const Step5 = forwardRef(({ formData, handleChange }, ref) => {
                   type="button"
                   className={styles.chipClose}
                   onClick={() => removeDateChip(setThrombectomies, thrombectomies, d)}
+                  aria-label={`Remove date ${fmt(d)}`}
                 >
                   ×
                 </button>

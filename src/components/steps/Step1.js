@@ -10,7 +10,6 @@ const Step1 = forwardRef(({ formData, handleChange }, ref) => {
     getValues,
     setValue,
     reset,
-    formState: { errors },
   } = useForm({
     defaultValues: formData,
     mode: 'onTouched',
