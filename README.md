@@ -127,20 +127,6 @@ npm run build    # production build
 
 ---
 
-## 🧩 Troubleshooting
-
-- **Logo / Favicon not showing:**  
-  Ensure assets are in `/public` and referenced correctly in `public/index.html`.  
-  Example:
-  ```html
-  <link rel="icon" href="%PUBLIC_URL%/favicon.ico" />
-  <link rel="icon" type="image/svg+xml" href="%PUBLIC_URL%/logo.svg" />
-  <link rel="apple-touch-icon" sizes="180x180" href="%PUBLIC_URL%/logo192.png" />
-  ```
-- **Payload not visible:**  
-  Open DevTools → Console. Search for `SUBMISSION_PAYLOAD`. You can also inspect `window.__DNV_LAST_PAYLOAD__`.
-
----
 
 ## ✅ Design Parity
 
