@@ -1,15 +1,15 @@
 {
   "files": {
     "main.css": "/Medlaunch-Concepts/static/css/main.4868f9c3.css",
-    "main.js": "/Medlaunch-Concepts/static/js/main.df56e14a.js",
+    "main.js": "/Medlaunch-Concepts/static/js/main.c3460bd0.js",
     "static/js/453.e8a5222f.chunk.js": "/Medlaunch-Concepts/static/js/453.e8a5222f.chunk.js",
     "index.html": "/Medlaunch-Concepts/index.html",
     "main.4868f9c3.css.map": "/Medlaunch-Concepts/static/css/main.4868f9c3.css.map",
-    "main.df56e14a.js.map": "/Medlaunch-Concepts/static/js/main.df56e14a.js.map",
+    "main.c3460bd0.js.map": "/Medlaunch-Concepts/static/js/main.c3460bd0.js.map",
     "453.e8a5222f.chunk.js.map": "/Medlaunch-Concepts/static/js/453.e8a5222f.chunk.js.map"
   },
   "entrypoints": [
     "static/css/main.4868f9c3.css",
-    "static/js/main.df56e14a.js"
+    "static/js/main.c3460bd0.js"
   ]
 }
