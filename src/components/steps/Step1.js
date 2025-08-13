@@ -1,18 +1,7 @@
-// File: src/components/steps/Step1.js
-
 import React, { forwardRef, useImperativeHandle, useEffect } from 'react';
-import {
-  Box,
-  Button,
-  Checkbox,
-  Divider,
-  FormControlLabel,
-  Grid,
-  InputLabel,
-  TextField,
-  Typography,
-} from '@mui/material';
-import { useForm, Controller, useWatch } from 'react-hook-form';
+import { useForm, Controller } from 'react-hook-form';
+import FormField from '../common/FormField';
+import styles from '../../styles/form.module.css';
 
 const Step1 = forwardRef(({ formData, handleChange }, ref) => {
   const {
@@ -27,153 +16,165 @@ const Step1 = forwardRef(({ formData, handleChange }, ref) => {
     mode: 'onTouched',
   });
 
-  const sameAsLegal = useWatch({ control, name: 'sameAsLegal' });
-  const legalEntityName = useWatch({ control, name: 'legalEntityName' });
-
-  // Sync formData from parent into this step
+  // keep local form in sync with parent on mount/prop change
   useEffect(() => {
     reset(formData);
   }, [formData, reset]);
 
-  // Auto-fill first and last name from legal entity name
-  useEffect(() => {
-    if (sameAsLegal && legalEntityName) {
-      const names = legalEntityName.trim().split(' ');
-      setValue('firstName', names[0] || '');
-      setValue('lastName', names.slice(1).join(' ') || '');
-    }
-  }, [sameAsLegal, legalEntityName, setValue]);
-
   useImperativeHandle(ref, () => ({
     validateForm: async () => {
-      const result = await trigger();
-      if (result) {
-        const values = getValues();
-        Object.entries(values).forEach(([key, value]) => {
-          handleChange(key)({
-            target: {
-              type: typeof value === 'boolean' ? 'checkbox' : 'text',
-              checked: value,
-              value,
-            },
-          });
-        });
-        return true;
-      }
-      return false;
+      const ok = await trigger();
+      if (!ok) return false;
+
+      const values = getValues();
+      Object.entries(values).forEach(([k, v]) =>
+        handleChange(k)({
+          target: { type: typeof v === 'boolean' ? 'checkbox' : 'text', checked: v, value: v },
+        })
+      );
+      return true;
     },
   }));
 
-  const inputStyle = {
-    height: '48px',
-    padding: '8px 16px',
-    fontSize: '14px',
-  };
-
-  const renderField = (label, name, isRequired, type = 'text') => (
-    <>
-      <InputLabel shrink htmlFor={name}>
-        {label} {isRequired && '*'}
-      </InputLabel>
-      <Controller
-        name={name}
-        control={control}
-        rules={
-          isRequired
-            ? {
-                required: `${label} is required`,
-                ...(type === 'email' && {
-                  pattern: {
-                    value: /^\S+@\S+\.\S+$/,
-                    message: 'Enter a valid email address',
-                  },
-                }),
-              }
-            : {}
-        }
-        render={({ field }) => (
-          <TextField
-            {...field}
-            id={name}
-            fullWidth
-            type={type}
-            inputProps={{ style: inputStyle }}
-            error={!!errors[name]}
-            helperText={errors[name]?.message}
-            sx={{ mb: 4 }}
-          />
-        )}
-      />
-    </>
-  );
-
   return (
-    <Box sx={{ px: 4, py: 5, maxWidth: '800px', mx: 'auto' }}>
-      <Typography variant="h6" fontWeight={600} mb={2}>
-        Identify Healthcare Organization
-      </Typography>
+    <div className={styles.stepBox}>
+      <h3 className={styles.sectionTitle}>Identify Healthcare Organization</h3>
 
-      {renderField('Legal Entity Name', 'legalEntityName', true)}
-      {renderField('Doing Business As (d/b/a) Name', 'doingBusinessAs', true)}
-
-      <FormControlLabel
-        sx={{ mb: 4 }}
-        control={
-          <Controller
-            name="sameAsLegal"
-            control={control}
-            render={({ field }) => <Checkbox {...field} checked={field.value} />}
-          />
-        }
-        label="Same as Legal Entity Name"
+      <FormField
+        control={control}
+        name="legalEntityName"
+        label="Legal Entity Name"
+        rules={{ required: 'Legal Entity Name is required' }}
+        autoComplete="organization"
+        onValueChange={handleChange('legalEntityName')}
       />
 
-      <Divider sx={{ my: 4 }} />
+      <FormField
+        control={control}
+        name="doingBusinessAs"
+        label="Doing Business As (d/b/a) Name"
+        rules={{ required: 'd/b/a Name is required' }}
+        onValueChange={handleChange('doingBusinessAs')}
+      />
 
-      <Typography variant="h6" fontWeight={600} mb={0.5}>
-        Primary Contact Information
-      </Typography>
-      <Typography variant="body2" color="text.secondary" mb={2}>
+      {/* One-time copy from Legal into DBA */}
+      <label className={styles.checkboxRow} aria-label="Same as Legal Entity Name">
+        <Controller
+          name="sameAsLegal"
+          control={control}
+          render={({ field }) => (
+            <input
+              type="checkbox"
+              checked={!!field.value}
+              onChange={(e) => {
+                const checked = e.target.checked;
+                field.onChange(checked);
+                // sync checkbox to parent
+                handleChange('sameAsLegal')({ target: { type: 'checkbox', checked } });
+
+                if (checked) {
+                  const legal = getValues('legalEntityName') || '';
+                  setValue('doingBusinessAs', legal, { shouldValidate: true, shouldDirty: true });
+                  // sync DBA to parent immediately
+                  handleChange('doingBusinessAs')({ target: { value: legal } });
+                }
+              }}
+            />
+          )}
+        />
+        <span>Same as Legal Entity Name</span>
+      </label>
+
+      <hr className={styles.divider} />
+
+      <h3 className={styles.sectionTitle}>Primary Contact Information</h3>
+      <p className={styles.sectionHint}>
         Primary contact receives all DNV Healthcare official communications
-      </Typography>
+      </p>
 
-      <Grid container spacing={2}>
-        <Grid item xs={12} sm={6}>
-          {renderField('First Name', 'firstName', true)}
-        </Grid>
-        <Grid item xs={12} sm={6}>
-          {renderField('Last Name', 'testLastName', true)}
-        </Grid>
-        <Grid item xs={12}>
-          {renderField('Title', 'primaryContactTitle', true)}
-        </Grid>
-        <Grid item xs={12} sm={6}>
-          {renderField('Work Phone', 'primaryContactPhone', true)}
-        </Grid>
-        <Grid item xs={12} sm={6}>
-          {renderField('Cell Phone', 'cellPhone', false)}
-        </Grid>
-        <Grid item xs={12}>
-          {renderField('Email', 'primaryContactEmail', true, 'email')}
-        </Grid>
-        <Grid item xs={12} display="flex" alignItems="center" gap={2}>
-          <Button variant="outlined">Send Verification Email</Button>
-          <Typography
-            variant="caption"
-            color="text.secondary"
-            sx={{
-              backgroundColor: '#fff7e6',
-              color: '#cc8b00',
-              borderRadius: '12px',
-              padding: '4px 12px',
-              fontWeight: 500,
+      <div className={styles.grid2}>
+        <FormField
+          control={control}
+          name="firstName"
+          label="First Name"
+          rules={{ required: 'First Name is required' }}
+          autoComplete="given-name"
+          onValueChange={handleChange('firstName')}
+        />
+        <FormField
+          control={control}
+          name="lastName"
+          label="Last Name"
+          rules={{ required: 'Last Name is required' }}
+          autoComplete="family-name"
+          onValueChange={handleChange('lastName')}
+        />
+      </div>
+
+      <FormField
+        control={control}
+        name="primaryContactTitle"
+        label="Title"
+        rules={{ required: 'Title is required' }}
+        autoComplete="organization-title"
+        onValueChange={handleChange('primaryContactTitle')}
+      />
+
+      <div className={styles.grid2}>
+        <FormField
+          control={control}
+          name="primaryContactPhone"
+          label="Work Phone"
+          type="tel"
+          rules={{ required: 'Work Phone is required' }}
+          autoComplete="tel"
+          onValueChange={handleChange('primaryContactPhone')}
+        />
+        <FormField
+          control={control}
+          name="cellPhone"
+          label="Cell Phone"
+          type="tel"
+          autoComplete="tel-national"
+          onValueChange={handleChange('cellPhone')}
+        />
+      </div>
+
+      {/* Email with right-slot refresh icon */}
+      <FormField
+        control={control}
+        name="primaryContactEmail"
+        label="Email"
+        type="email"
+        rules={{
+          required: 'Email is required',
+          pattern: { value: /^\S+@\S+\.\S+$/, message: 'Enter a valid email address' },
+        }}
+        autoComplete="email"
+        onValueChange={handleChange('primaryContactEmail')}
+        rightSlot={
+          <button
+            type="button"
+            className={styles.iconBtn}
+            title="Refresh"
+            aria-label="Refresh email"
+            onClick={() => {
+              const current = getValues('primaryContactEmail') || '';
+              setValue('primaryContactEmail', current, { shouldValidate: true, shouldDirty: true });
+              handleChange('primaryContactEmail')({ target: { value: current } });
             }}
           >
-            Not verified
-          </Typography>
-        </Grid>
-      </Grid>
-    </Box>
+            ↻
+          </button>
+        }
+      />
+
+      {/* Verification row */}
+      <div className={`${styles.inlineRow} ${styles.verifyRow}`}>
+        <button type="button" className={styles.btnOutlineSmall}>Send Verification Email</button>
+        <span className={styles.badgeWarn}>Not verified</span>
+      </div>
+    </div>
   );
 });
 

@@ -1,171 +1,156 @@
-// src/components/steps/Step4.js
-
 import React, { forwardRef, useImperativeHandle, useState, useEffect } from 'react';
-import {
-  Box,
-  Button,
-  Grid,
-  Typography,
-  Paper,
-  List,
-  ListItem,
-  ListItemIcon,
-  ListItemText
-} from '@mui/material';
-import CloudUploadIcon from '@mui/icons-material/CloudUpload';
-import DescriptionIcon from '@mui/icons-material/Description';
-import { useForm } from 'react-hook-form';
+import styles from '../../styles/form.module.css';
 
 const Step4 = forwardRef(({ formData, handleChange }, ref) => {
-  const {
-    trigger,
-    getValues,
-    setValue,
-  } = useForm({
-    defaultValues: formData,
-    mode: 'onTouched',
-  });
+  const [selected, setSelected] = useState(formData.multipleLocations || 'single'); // 'single' | 'multiple'
+  const [files, setFiles] = useState(formData.uploadedFiles || []);
 
-  const [selectedOption, setSelectedOption] = useState(formData.multipleLocations || 'single');
-  const [uploadedFiles, setUploadedFiles] = useState(formData.uploadedFiles || []);
-
-  useEffect(() => {
-    setValue('multipleLocations', selectedOption);
-  }, [selectedOption, setValue]);
-
-  useEffect(() => {
-    setValue('uploadedFiles', uploadedFiles);
-  }, [uploadedFiles, setValue]);
+  useEffect(() => { handleChange('multipleLocations')(selected); }, [selected]); // sync up
+  useEffect(() => { handleChange('uploadedFiles')(files); }, [files]);
 
   useImperativeHandle(ref, () => ({
     validateForm: async () => {
-      const isValid = await trigger();
-      if (isValid) {
-        const values = getValues();
-        Object.entries(values).forEach(([key, value]) => {
-          handleChange(key)({ target: { value, type: typeof value === 'boolean' ? 'checkbox' : 'text' } });
-        });
-      }
-      return isValid;
-    }
+      handleChange('multipleLocations')(selected);
+      handleChange('uploadedFiles')(files);
+      return true;
+    },
   }));
 
-  const handleFileUpload = (e) => {
-    const newFiles = Array.from(e.target.files);
+  const onSelect = (opt) => setSelected(opt);
 
-    // Avoid duplicate files based on name + size
-    const filteredNewFiles = newFiles.filter((file) =>
-      !uploadedFiles.some((existingFile) => (
-        existingFile.name === file.name && existingFile.size === file.size
-      ))
-    );
+  const addFiles = (fileList) => {
+    const next = [...files];
+    Array.from(fileList).forEach((f) => {
+      if (!next.some((x) => x.name === f.name && x.size === f.size)) next.push(f);
+    });
+    setFiles(next);
+  };
 
-    const updatedFiles = [...uploadedFiles, ...filteredNewFiles];
+  const onInputChange = (e) => addFiles(e.target.files);
 
-    setUploadedFiles(updatedFiles);
-    handleChange('uploadedFiles')({ target: { value: updatedFiles } });
+  const onDrop = (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (e.dataTransfer?.files?.length) addFiles(e.dataTransfer.files);
+  };
+
+  const downloadTemplate = () => {
+    const csv = [
+      'Site Name,Street Address,City,State,ZIP',
+      'Main Campus,123 Example St,Denver,CO,80202',
+    ].join('\n');
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'DNV_Sites_Template.csv';
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+  };
+
+  const removeFile = (idx) => {
+    const next = files.slice();
+    next.splice(idx, 1);
+    setFiles(next);
   };
 
   return (
-    <Box p={3}>
-      <Typography variant="h6" gutterBottom>
-        Do you have multiple sites or locations?
-      </Typography>
+    <div className={styles.stepBox}>
+      <h3 className={styles.sectionTitle}>Do you have multiple sites or locations?</h3>
 
-      <Grid container spacing={2} sx={{ mb: 4 }}>
-        <Grid item xs={12} sm={6}>
-          <Paper
-            variant="outlined"
-            sx={{
-              padding: 2,
-              borderColor: selectedOption === 'single' ? 'primary.main' : 'grey.300',
-              cursor: 'pointer',
-            }}
-            onClick={() => setSelectedOption('single')}
-          >
-            <Typography variant="subtitle1">Single Location</Typography>
-            <Typography variant="body2" color="textSecondary">
-              You operate from one facility only.
-            </Typography>
-          </Paper>
-        </Grid>
-        <Grid item xs={12} sm={6}>
-          <Paper
-            variant="outlined"
-            sx={{
-              padding: 2,
-              borderColor: selectedOption === 'multiple' ? 'primary.main' : 'grey.300',
-              cursor: 'pointer',
-            }}
-            onClick={() => setSelectedOption('multiple')}
-          >
-            <Typography variant="subtitle1">Multiple Locations</Typography>
-            <Typography variant="body2" color="textSecondary">
-              You have multiple facilities or practice locations.
-            </Typography>
-          </Paper>
-        </Grid>
-      </Grid>
+      <div className={styles.choiceGrid}>
+        <button
+          type="button"
+          className={`${styles.choiceCard} ${selected === 'single' ? styles.choiceActive : ''}`}
+          onClick={() => onSelect('single')}
+          aria-pressed={selected === 'single'}
+        >
+          <div className={styles.choiceTitle}>Single Location</div>
+          <div className={styles.choiceHint}>We operate from one facility only</div>
+        </button>
 
-      {selectedOption === 'multiple' && (
-        <Box border={1} borderColor="grey.300" borderRadius={2} p={3} sx={{ backgroundColor: '#f9f9f9' }}>
-          <Typography variant="subtitle1" gutterBottom>
+        <button
+          type="button"
+          className={`${styles.choiceCard} ${selected === 'multiple' ? styles.choiceActive : ''}`}
+          onClick={() => onSelect('multiple')}
+          aria-pressed={selected === 'multiple'}
+        >
+          <div className={styles.choiceTitle}>Multiple Locations</div>
+          <div className={styles.choiceHint}>We have multiple facilities or practice locations</div>
+        </button>
+      </div>
+
+      {selected === 'multiple' && (
+        <div className={styles.subCard}>
+          <div className={styles.inputLabel} style={{ fontWeight: 600, marginBottom: 8 }}>
             How would you like to add your site information?
-          </Typography>
-          <Typography variant="body2" gutterBottom>
-            Upload a spreadsheet with all sites information
-          </Typography>
+          </div>
 
-          <Box
-            mt={2}
-            display="flex"
-            flexDirection="column"
-            alignItems="center"
-            justifyContent="center"
-            p={4}
-            border="2px dashed #ccc"
-            borderRadius={2}
-            sx={{ backgroundColor: '#fff' }}
+          {/* Upload method card */}
+          <div className={styles.uploadMethod}>
+            <div className={styles.uploadMethodTitle}>Upload CSV / Excel</div>
+            <div className={styles.uploadMethodHint}>
+              Upload a spreadsheet with all site information
+            </div>
+          </div>
+
+          {/* Dropzone */}
+          <div
+            className={styles.dropZone}
+            onDragOver={(e) => { e.preventDefault(); e.stopPropagation(); }}
+            onDrop={onDrop}
           >
-            <CloudUploadIcon fontSize="large" color="action" />
-            <Typography mt={1}>Upload Site Information</Typography>
-            <Button variant="contained" component="label" sx={{ mt: 2 }}>
-              Select Files
+            <div className={styles.dropIcon}>☁️</div>
+            <div className={styles.dropTitle}>Upload Site Information</div>
+            <div className={styles.dropHint}>
+              Drag and drop your CSV or Excel file here, or click to select
+            </div>
+
+            <label className={styles.btnPrimary} style={{ marginTop: 12, cursor: 'pointer' }}>
+              Select file
               <input
                 type="file"
                 hidden
                 multiple
-                accept=".csv, .xls, .xlsx, .pdf" // optional: restrict file types
-                onChange={handleFileUpload}
+                accept=".csv,.xls,.xlsx"
+                onChange={onInputChange}
               />
-            </Button>
-            <Typography variant="body2" mt={2} color="primary" sx={{ cursor: 'pointer' }}>
-              Download CSV Template
-            </Typography>
-          </Box>
+            </label>
 
-          {/* Uploaded File List */}
-          {uploadedFiles.length > 0 && (
-            <Box mt={3}>
-              <Typography variant="subtitle2" gutterBottom>Uploaded Files:</Typography>
-              <List dense>
-                {uploadedFiles.map((file, index) => (
-                  <ListItem key={`${file.name}-${index}`}>
-                    <ListItemIcon>
-                      <DescriptionIcon />
-                    </ListItemIcon>
-                    <ListItemText
-                      primary={file.name}
-                      secondary={`${(file.size / 1024).toFixed(1)} KB`}
-                    />
-                  </ListItem>
-                ))}
-              </List>
-            </Box>
+            <button type="button" className={styles.linkBtn} onClick={downloadTemplate}>
+              Download CSV Template
+            </button>
+          </div>
+
+          {/* Uploaded list */}
+          {files.length > 0 && (
+            <div className={styles.fileList}>
+              <div className={styles.inputLabel} style={{ marginBottom: 8 }}>Uploaded</div>
+              {files.map((f, i) => (
+                <div key={`${f.name}-${f.size}-${i}`} className={styles.fileItem}>
+                  <span className={styles.fileIcon}>📄</span>
+                  <span className={styles.fileName}>{f.name}</span>
+                  <span className={styles.fileSize}>{(f.size / 1024).toFixed(1)} KB</span>
+
+                  {/* NEW: round close icon button (SVG) */}
+                  <button
+                    type="button"
+                    className={styles.fileRemove}
+                    aria-label={`Remove ${f.name}`}
+                    onClick={() => removeFile(i)}
+                  >
+                    <svg viewBox="0 0 20 20" aria-hidden="true">
+                      <path d="M6 6l8 8M14 6l-8 8" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" />
+                    </svg>
+                  </button>
+                </div>
+              ))}
+            </div>
           )}
-        </Box>
+        </div>
       )}
-    </Box>
+    </div>
   );
 });
 

@@ -1,186 +1,307 @@
-import React, { forwardRef, useEffect } from 'react';
-import {
-  Box,
-  Checkbox,
-  Divider,
-  FormControlLabel,
-  Grid,
-  InputLabel,
-  MenuItem,
-  Select,
-  TextField,
-  Typography,
-} from '@mui/material';
-import { useForm, Controller, useWatch } from 'react-hook-form';
+import React, { forwardRef, useImperativeHandle, useEffect } from 'react';
+import { useForm, Controller } from 'react-hook-form';
+import FormField from '../common/FormField';
+import styles from '../../styles/form.module.css';
+
+const STATES = [
+  { v: '', n: 'Select State' },
+  { v: 'AL', n: 'Alabama' }, { v: 'AK', n: 'Alaska' }, { v: 'AZ', n: 'Arizona' },
+  { v: 'CA', n: 'California' }, { v: 'CO', n: 'Colorado' }, { v: 'CT', n: 'Connecticut' },
+  { v: 'FL', n: 'Florida' }, { v: 'GA', n: 'Georgia' }, { v: 'IL', n: 'Illinois' },
+  { v: 'MA', n: 'Massachusetts' }, { v: 'NY', n: 'New York' }, { v: 'TX', n: 'Texas' },
+];
 
 const Step3 = forwardRef(({ formData, handleChange }, ref) => {
   const {
-    control,
-    trigger,
-    getValues,
-    setValue,
+    control, trigger, getValues, setValue, reset,
     formState: { errors },
-  } = useForm({
-    defaultValues: formData,
-    mode: 'onTouched',
-  });
+  } = useForm({ defaultValues: formData, mode: 'onTouched' });
 
-  const sameAsCEO = useWatch({ control, name: 'sameAsCEO' });
-  const sameAsDirector = useWatch({ control, name: 'sameAsDirector' });
-  const sameAsInvoice = useWatch({ control, name: 'sameAsInvoice' });
+  useEffect(() => { reset(formData); }, [formData, reset]);
 
-  useEffect(() => {
-    if (sameAsCEO) {
-      setValue('ceoFirstName', formData.firstName);
-      setValue('ceoLastName', formData.testLastName);
-      setValue('ceoPhone', formData.primaryContactPhone);
-      setValue('ceoEmail', formData.primaryContactEmail);
-    }
-  }, [sameAsCEO]);
-
-  useEffect(() => {
-    if (sameAsDirector) {
-      setValue('directorFirstName', formData.firstName);
-      setValue('directorLastName', formData.testLastName);
-      setValue('directorPhone', formData.primaryContactPhone);
-      setValue('directorEmail', formData.primaryContactEmail);
-    }
-  }, [sameAsDirector]);
-
-  useEffect(() => {
-    if (sameAsInvoice) {
-      setValue('invoiceFirstName', formData.firstName);
-      setValue('invoiceLastName', formData.testLastName);
-      setValue('invoicePhone', formData.primaryContactPhone);
-      setValue('invoiceEmail', formData.primaryContactEmail);
-    }
-  }, [sameAsInvoice]);
-
-  React.useImperativeHandle(ref, () => ({
+  useImperativeHandle(ref, () => ({
     validateForm: async () => {
-      const valid = await trigger();
-      if (valid) {
-        const values = getValues();
-        Object.entries(values).forEach(([key, value]) => {
-          handleChange(key)({ target: { value } });
-        });
-        return true;
-      }
-      return false;
+      const ok = await trigger();
+      if (!ok) return false;
+
+      // push all values to parent only on Continue
+      const values = getValues();
+      Object.entries(values).forEach(([k, v]) =>
+        handleChange(k)({
+          target: { type: typeof v === 'boolean' ? 'checkbox' : 'text', checked: v, value: v },
+        })
+      );
+      return true;
     },
   }));
 
-  const renderContactSection = (title, prefix, includeCheckbox = false, checkboxName = '') => (
-    <Box sx={{ mb: 5 }}>
-      <Typography fontWeight={600} mb={1}>{title}</Typography>
-      {includeCheckbox && (
-        <FormControlLabel
-          control={<Controller name={checkboxName} control={control} render={({ field }) => <Checkbox {...field} />} />}
-          label="Same as Primary Contact entered in Step 1"
-          sx={{ mb: 2 }}
-        />
-      )}
-      <Grid container spacing={2}>
-        <Grid item xs={12} sm={6}>
-          <InputLabel shrink>First Name *</InputLabel>
-          <Controller
-            name={`${prefix}FirstName`}
-            control={control}
-            rules={{ required: 'First name is required' }}
-            render={({ field }) => <TextField {...field} fullWidth error={!!errors[`${prefix}FirstName`]} helperText={errors[`${prefix}FirstName`]?.message} />}
-          />
-        </Grid>
-        <Grid item xs={12} sm={6}>
-          <InputLabel shrink>Last Name *</InputLabel>
-          <Controller
-            name={`${prefix}LastName`}
-            control={control}
-            rules={{ required: 'Last name is required' }}
-            render={({ field }) => <TextField {...field} fullWidth error={!!errors[`${prefix}LastName`]} helperText={errors[`${prefix}LastName`]?.message} />}
-          />
-        </Grid>
-        <Grid item xs={12} sm={6}>
-          <InputLabel shrink>Phone *</InputLabel>
-          <Controller
-            name={`${prefix}Phone`}
-            control={control}
-            rules={{ required: 'Phone is required' }}
-            render={({ field }) => <TextField {...field} fullWidth error={!!errors[`${prefix}Phone`]} helperText={errors[`${prefix}Phone`]?.message} />}
-          />
-        </Grid>
-        <Grid item xs={12} sm={6}>
-          <InputLabel shrink>Email *</InputLabel>
-          <Controller
-            name={`${prefix}Email`}
-            control={control}
-            rules={{ required: 'Email is required', pattern: { value: /^\S+@\S+\.\S+$/, message: 'Enter a valid email address' } }}
-            render={({ field }) => <TextField {...field} fullWidth error={!!errors[`${prefix}Email`]} helperText={errors[`${prefix}Email`]?.message} />}
-          />
-        </Grid>
-      </Grid>
-    </Box>
+  // Copy from Step 1 primary contact into a specific group (local only)
+  const copyPrimaryTo = (prefix) => {
+    const { firstName, lastName, primaryContactPhone, primaryContactEmail } = formData;
+    const payload = {
+      [`${prefix}FirstName`]: firstName || '',
+      [`${prefix}LastName`]: lastName || '',
+      [`${prefix}Phone`]: primaryContactPhone || '',
+      [`${prefix}Email`]: primaryContactEmail || '',
+    };
+    Object.entries(payload).forEach(([k, v]) => {
+      setValue(k, v, { shouldValidate: true, shouldDirty: true });
+    });
+  };
+
+  // Clear a specific group (local only)
+  const clearContact = (prefix) => {
+    const payload = {
+      [`${prefix}FirstName`]: '',
+      [`${prefix}LastName`]: '',
+      [`${prefix}Phone`]: '',
+      [`${prefix}Email`]: '',
+    };
+    Object.entries(payload).forEach(([k, v]) => {
+      setValue(k, v, { shouldValidate: true, shouldDirty: true });
+    });
+  };
+
+  const SubCard = ({ title, children }) => (
+    <div className={styles.subCard}>
+      <div className={styles.inputLabel} style={{ fontWeight: 600, marginBottom: 8 }}>{title}</div>
+      {children}
+    </div>
   );
 
   return (
-    <Box sx={{ px: 4, py: 5, maxWidth: '800px', mx: 'auto' }}>
-      <Typography variant="h6" fontWeight={600} mb={2}>Leadership Contacts</Typography>
+    <div className={styles.stepBox}>
+      <h3 className={styles.sectionTitle}>Contact Information</h3>
 
-      {renderContactSection('Chief Executive Officer (CEO)', 'ceo', true, 'sameAsCEO')}
-      <Divider sx={{ my: 3 }} />
-
-      {renderContactSection('Director of Quality', 'director', true, 'sameAsDirector')}
-      <Divider sx={{ my: 3 }} />
-
-      {renderContactSection('Invoicing Contact', 'invoice', true, 'sameAsInvoice')}
-
-      <Typography fontWeight={600} mb={2}>Billing Address</Typography>
-      <Grid container spacing={2}>
-        <Grid item xs={12}>
-          <InputLabel shrink>Street Address *</InputLabel>
+      {/* CEO */}
+      <SubCard title="Chief Executive Officer (CEO)">
+        <label className={styles.checkboxRow} style={{ marginTop: 0 }}>
           <Controller
-            name="invoiceStreet"
-            control={control}
-            rules={{ required: 'Street address is required' }}
-            render={({ field }) => <TextField {...field} fullWidth error={!!errors.invoiceStreet} helperText={errors.invoiceStreet?.message} />}
-          />
-        </Grid>
-        <Grid item xs={12} sm={4}>
-          <InputLabel shrink>City *</InputLabel>
-          <Controller
-            name="invoiceCity"
-            control={control}
-            rules={{ required: 'City is required' }}
-            render={({ field }) => <TextField {...field} fullWidth error={!!errors.invoiceCity} helperText={errors.invoiceCity?.message} />}
-          />
-        </Grid>
-        <Grid item xs={12} sm={4}>
-          <InputLabel shrink>State</InputLabel>
-          <Controller
-            name="invoiceState"
+            name="sameAsCEO"
             control={control}
             render={({ field }) => (
-              <Select {...field} displayEmpty fullWidth error={!!errors.invoiceState}>
-                <MenuItem value="">Select State</MenuItem>
-                <MenuItem value="CA">California</MenuItem>
-                <MenuItem value="NY">New York</MenuItem>
-                <MenuItem value="TX">Texas</MenuItem>
-                {/* Add more states as needed */}
-              </Select>
+              <input
+                type="checkbox"
+                checked={!!field.value}
+                onChange={(e) => {
+                  const checked = e.target.checked;
+                  field.onChange(checked);
+                  if (checked) copyPrimaryTo('ceo');
+                  else clearContact('ceo');
+                }}
+              />
             )}
           />
+          <span className={styles.sectionHint} style={{ margin: 0 }}>
+            Same as Primary Contact entered in Step 1
+          </span>
+        </label>
 
-        </Grid>
-        <Grid item xs={12} sm={4}>
-          <InputLabel shrink>ZIP Code *</InputLabel>
-          <Controller
-            name="invoiceZip"
+        <div className={styles.grid2}>
+          <FormField
             control={control}
-            rules={{ required: 'ZIP Code is required' }}
-            render={({ field }) => <TextField {...field} fullWidth error={!!errors.invoiceZip} helperText={errors.invoiceZip?.message} />}
+            name="ceoFirstName"
+            label="First Name"
+            rules={{ required: 'First name is required' }}
+            autoComplete="given-name"
           />
-        </Grid>
-      </Grid>
-    </Box>
+          <FormField
+            control={control}
+            name="ceoLastName"
+            label="Last Name"
+            rules={{ required: 'Last name is required' }}
+            autoComplete="family-name"
+          />
+        </div>
+        <FormField
+          control={control}
+          name="ceoPhone"
+          label="Phone"
+          type="tel"
+          rules={{ required: 'Phone is required' }}
+          autoComplete="tel"
+        />
+        <FormField
+          control={control}
+          name="ceoEmail"
+          label="Email"
+          type="email"
+          rules={{ required: 'Email is required', pattern: { value: /^\S+@\S+\.\S+$/, message: 'Enter a valid email address' } }}
+          autoComplete="email"
+        />
+      </SubCard>
+
+      {/* Director of Quality */}
+      <SubCard title="Director of Quality">
+        <label className={styles.checkboxRow} style={{ marginTop: 0 }}>
+          <Controller
+            name="sameAsDirector"
+            control={control}
+            render={({ field }) => (
+              <input
+                type="checkbox"
+                checked={!!field.value}
+                onChange={(e) => {
+                  const checked = e.target.checked;
+                  field.onChange(checked);
+                  if (checked) copyPrimaryTo('director');
+                  else clearContact('director');
+                }}
+              />
+            )}
+          />
+          <span className={styles.sectionHint} style={{ margin: 0 }}>
+            Same as Primary Contact entered in Step 1
+          </span>
+        </label>
+
+        <div className={styles.grid2}>
+          <FormField
+            control={control}
+            name="directorFirstName"
+            label="First Name"
+            autoComplete="given-name"
+          />
+          <FormField
+            control={control}
+            name="directorLastName"
+            label="Last Name"
+            autoComplete="family-name"
+          />
+        </div>
+        <FormField
+          control={control}
+          name="directorPhone"
+          label="Phone"
+          type="tel"
+          autoComplete="tel"
+        />
+        <FormField
+          control={control}
+          name="directorEmail"
+          label="Email"
+          type="email"
+          rules={{ pattern: { value: /^\S+@\S+\.\S+$/, message: 'Enter a valid email address' } }}
+          autoComplete="email"
+        />
+      </SubCard>
+
+      {/* Invoicing Contact */}
+      <SubCard title="Invoicing Contact">
+        <label className={styles.checkboxRow} style={{ marginTop: 0 }}>
+          <Controller
+            name="sameAsInvoice"
+            control={control}
+            render={({ field }) => (
+              <input
+                type="checkbox"
+                checked={!!field.value}
+                onChange={(e) => {
+                  const checked = e.target.checked;
+                  field.onChange(checked);
+                  if (checked) copyPrimaryTo('invoice');
+                  else clearContact('invoice');
+                }}
+              />
+            )}
+          />
+          <span className={styles.sectionHint} style={{ margin: 0 }}>
+            Same as Primary Contact entered in Step 1
+          </span>
+        </label>
+
+        <div className={styles.grid2}>
+          <FormField
+            control={control}
+            name="invoiceFirstName"
+            label="First Name"
+            rules={{ required: 'First name is required' }}
+            autoComplete="given-name"
+          />
+          <FormField
+            control={control}
+            name="invoiceLastName"
+            label="Last Name"
+            rules={{ required: 'Last name is required' }}
+            autoComplete="family-name"
+          />
+        </div>
+        <FormField
+          control={control}
+          name="invoicePhone"
+          label="Phone"
+          type="tel"
+          rules={{ required: 'Phone is required' }}
+          autoComplete="tel"
+        />
+        <FormField
+          control={control}
+          name="invoiceEmail"
+          label="Email"
+          type="email"
+          rules={{ required: 'Email is required', pattern: { value: /^\S+@\S+\.\S+$/, message: 'Enter a valid email address' } }}
+          autoComplete="email"
+        />
+      </SubCard>
+
+      {/* Billing Address */}
+      <SubCard title="Billing Address">
+        <FormField
+          control={control}
+          name="invoiceStreetAddress"
+          label="Street Address"
+          rules={{ required: 'Street address is required' }}
+          autoComplete="street-address"
+        />
+
+        <div className={styles.grid2} style={{ gridTemplateColumns: '1fr 1fr 1fr' }}>
+          {/* City */}
+          <FormField
+            control={control}
+            name="invoiceCity"
+            label="City"
+            rules={{ required: 'City is required' }}
+          />
+
+          {/* State (native select) */}
+          <div className={styles.fieldGroup}>
+            <label htmlFor="invoiceState" className={styles.inputLabel}>
+              State <span className={styles.req}>*</span>
+            </label>
+            <Controller
+              name="invoiceState"
+              control={control}
+              rules={{ required: 'State is required' }}
+              render={({ field, fieldState: { error } }) => (
+                <>
+                  <select
+                    {...field}
+                    id="invoiceState"
+                    className={`${styles.input} ${error ? styles.inputError : ''}`}
+                  >
+                    {STATES.map((s) => (
+                      <option key={s.v} value={s.v} disabled={s.v === ''}>
+                        {s.n}
+                      </option>
+                    ))}
+                  </select>
+                  {error && <div className={styles.errorText}>{error.message}</div>}
+                </>
+              )}
+            />
+          </div>
+
+          {/* ZIP */}
+          <FormField
+            control={control}
+            name="invoiceZipCode"
+            label="ZIP Code"
+            rules={{ required: 'ZIP Code is required' }}
+            inputProps={{ inputMode: 'numeric', pattern: '[0-9]*' }}
+          />
+        </div>
+      </SubCard>
+    </div>
   );
 });
 

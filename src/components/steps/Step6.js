@@ -1,179 +1,241 @@
-// ✅ src/components/steps/Step6.js
-import React, { forwardRef, useImperativeHandle } from 'react';
-import {
-  Box,
-  Typography,
-  Paper,
-  Accordion,
-  AccordionSummary,
-  AccordionDetails,
-  Chip,
-  Grid,
-  Checkbox,
-  FormControlLabel,
-  Button,
-  IconButton
-} from '@mui/material';
-import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
-import EditIcon from '@mui/icons-material/Edit';
-import dayjs from 'dayjs';
+import React, { forwardRef, useImperativeHandle, useState } from 'react';
+import styles from '../../styles/form.module.css';
+
+const fmt = (iso) => {
+  if (!iso) return '';
+  const d = new Date(iso);
+  return isNaN(d.getTime())
+    ? iso
+    : d.toLocaleDateString(undefined, { month: '2-digit', day: '2-digit', year: 'numeric' });
+};
+
+const pickSelectedServices = (servicesObj) => {
+  const out = [];
+  Object.entries(servicesObj || {}).forEach(([, map]) => {
+    Object.entries(map || {}).forEach(([name, val]) => {
+      if (val) out.push(name);
+    });
+  });
+  return out;
+};
 
 const InfoRow = ({ label, value }) => (
-  <Box display="flex" mb={0.5}>
-    <Typography fontWeight="bold" width="180px">{label}:</Typography>
-    <Typography>{value}</Typography>
-  </Box>
+  <div className={styles.infoRow}>
+    <div className={styles.infoLabel}>{label}:</div>
+    <div className={styles.infoValue}>{value || '—'}</div>
+  </div>
 );
 
 const ContactCard = ({ title, contact, onEdit }) => (
-  <Paper variant="outlined" sx={{ p: 2, mb: 2, borderRadius: 2 }}>
-    <Box display="flex" justifyContent="space-between" alignItems="center">
-      <Typography fontWeight="bold" gutterBottom>{title}</Typography>
-      <IconButton size="small" color="primary" onClick={onEdit}>
-        <EditIcon fontSize="small" />
-      </IconButton>
-    </Box>
+  <div className={styles.contactCard}>
+    <div className={styles.contactHead}>
+      <div className={styles.contactTitle}>{title}</div>
+      <button type="button" className={styles.linkWhite} onClick={onEdit} aria-label={`Edit ${title}`}>
+        Edit
+      </button>
+    </div>
     {contact.name && <InfoRow label="Name" value={contact.name} />}
     {contact.title && <InfoRow label="Title" value={contact.title} />}
     {contact.phone && <InfoRow label="Phone" value={contact.phone} />}
     {contact.email && <InfoRow label="Email" value={contact.email} />}
     {contact.address && <InfoRow label="Address" value={contact.address} />}
-  </Paper>
+  </div>
 );
 
-const Step6 = forwardRef(({ formData, isCertified, setIsCertified, onDownloadPDF, onDownloadCSV, goToStep }, ref) => {
-  useImperativeHandle(ref, () => ({
-    validateForm: async () => true,
-  }));
-
-  const renderChips = (items) => (
-    <Box display="flex" flexWrap="wrap" gap={1} mt={1}>
-      {items.map((item, index) => (
-        <Chip
-          key={index}
-          label={dayjs(item).isValid() ? dayjs(item).format('MM/DD/YYYY') : item}
-          sx={{ backgroundColor: '#004B8D', color: 'white' }}
-        />
-      ))}
-    </Box>
-  );
-
-  const renderAccordion = (title, content, stepNum) => (
-    <Accordion defaultExpanded sx={{ borderRadius: 2 }}>
-      <AccordionSummary
-        expandIcon={<ExpandMoreIcon sx={{ color: 'white' }} />}
-        sx={{ bgcolor: '#004B8D', color: '#fff', borderTopLeftRadius: 8, borderTopRightRadius: 8 }}
-      >
-        <Box display="flex" alignItems="center" justifyContent="space-between" width="100%">
-          <Typography>{title}</Typography>
-          <IconButton size="small" color="inherit" onClick={() => goToStep(stepNum)}>
-            <EditIcon fontSize="small" />
-          </IconButton>
-        </Box>
-      </AccordionSummary>
-      <AccordionDetails>{content}</AccordionDetails>
-    </Accordion>
-  );
-
+const Section = ({ title, children, defaultOpen = true, onEdit }) => {
+  const [open, setOpen] = useState(defaultOpen);
   return (
-    <Box p={3}>
-      <Typography variant="h6" gutterBottom>Hospital Information</Typography>
+    <div className={styles.reviewSection}>
+      <button
+        type="button"
+        className={styles.reviewHeader}
+        onClick={() => setOpen((v) => !v)}
+        aria-expanded={open}
+      >
+        <span className={styles.reviewTitle}>{title}</span>
+        <div className={styles.reviewActions}>
+          <button type="button" className={styles.linkWhite} onClick={(e)=>{e.stopPropagation(); onEdit?.();}}>
+            Edit
+          </button>
+          <span className={styles.caret} aria-hidden>{open ? '▾' : '▸'}</span>
+        </div>
+      </button>
+      {open && <div className={styles.reviewBody}>{children}</div>}
+    </div>
+  );
+};
 
-      {renderAccordion('Basic Information', (
-        <>
+const Step6 = forwardRef(
+  ({ formData, isCertified, setIsCertified, onDownloadPDF, onDownloadCSV, goToStep }, ref) => {
+    useImperativeHandle(ref, () => ({
+      validateForm: async () => true, // nothing to validate on review
+    }));
+
+    const selectedServiceNames = pickSelectedServices(formData.services);
+    const allServices = [...selectedServiceNames, ...(formData.otherServices || [])];
+
+    const street = formData.invoiceStreetAddress || formData.invoiceStreet || '';
+    const zip = formData.invoiceZipCode || formData.invoiceZip || '';
+
+    return (
+      <div className={styles.stepBox}>
+        <h3 className={styles.sectionTitle}>Hospital Information</h3>
+
+        <Section title="Basic Information" onEdit={() => goToStep?.(1)}>
           <InfoRow label="Legal Entity Name" value={formData.legalEntityName} />
           <InfoRow label="d/b/a Name" value={formData.doingBusinessAs} />
-          <Box mt={1}>
-            <Typography fontWeight="bold">Primary Contact:</Typography>
-            <Typography>
-              {formData.firstName} {formData.lastName}<br />
-              Work: {formData.primaryContactPhone} | Cell: {formData.cellPhone}<br />
-              Email: {formData.primaryContactEmail}<br />
-              Title: {formData.primaryContactTitle}
-            </Typography>
-          </Box>
-        </>
-      ), 1)}
+          <div className={styles.blockHead}>Primary Contact</div>
+          <div className={styles.blockBox}>
+            <InfoRow label="Name" value={`${formData.firstName || ''} ${formData.lastName || ''}`.trim()} />
+            <InfoRow label="Title" value={formData.primaryContactTitle} />
+            <InfoRow
+              label="Phone"
+              value={`Work: ${formData.primaryContactPhone || '—'} | Cell: ${formData.cellPhone || '—'}`}
+            />
+            <InfoRow label="Email" value={formData.primaryContactEmail} />
+          </div>
+        </Section>
 
-      {renderAccordion('Facility Details', (
-        <InfoRow label="Facility Type" value={formData.facilityType} />
-      ), 2)}
+        <Section title="Facility Details" onEdit={() => goToStep?.(2)}>
+          <InfoRow label="Facility Type" value={formData.facilityType} />
+        </Section>
 
-      {renderAccordion('Leadership Contacts', (
-        <>
-          <ContactCard title="CEO" contact={{
-            name: `${formData.ceoFirstName} ${formData.ceoLastName}`,
-            phone: formData.ceoPhone,
-            email: formData.ceoEmail,
-          }} onEdit={() => goToStep(3)} />
+        <Section title="Leadership Contacts" onEdit={() => goToStep?.(3)}>
+          <ContactCard
+            title="CEO"
+            contact={{
+              name: `${formData.ceoFirstName || ''} ${formData.ceoLastName || ''}`.trim(),
+              phone: formData.ceoPhone,
+              email: formData.ceoEmail,
+            }}
+            onEdit={() => goToStep?.(3)}
+          />
+          <ContactCard
+            title="Director of Quality"
+            contact={{
+              name: `${formData.directorFirstName || ''} ${formData.directorLastName || ''}`.trim(),
+              phone: formData.directorPhone,
+              email: formData.directorEmail,
+            }}
+            onEdit={() => goToStep?.(3)}
+          />
+          <ContactCard
+            title="Invoicing Contact"
+            contact={{
+              name: `${formData.invoiceFirstName || ''} ${formData.invoiceLastName || ''}`.trim(),
+              phone: formData.invoicePhone,
+              email: formData.invoiceEmail,
+              address: [street, formData.invoiceCity, formData.invoiceState, zip]
+                .filter(Boolean)
+                .join(', '),
+            }}
+            onEdit={() => goToStep?.(3)}
+          />
+        </Section>
 
-          <ContactCard title="Director of Quality" contact={{
-            name: `${formData.directorFirstName} ${formData.directorLastName}`,
-            phone: formData.directorPhone,
-            email: formData.directorEmail,
-          }} onEdit={() => goToStep(3)} />
+        <Section title="Site Information" onEdit={() => goToStep?.(4)}>
+          <InfoRow
+            label="Site Configuration"
+            value={formData.multipleLocations === 'multiple' ? 'Multiple Locations' : 'Single Location'}
+          />
+          {(formData.uploadedFiles || []).length > 0 && (
+            <>
+              <div className={styles.blockHead}>Uploaded</div>
+              <div className={styles.fileList}>
+                {(formData.uploadedFiles || []).map((f, i) => (
+                  <div key={`${f.name || 'file'}-${i}`} className={styles.fileItem}>
+                    <span className={styles.fileIcon}>📄</span>
+                    <span className={styles.fileName}>{f.name || `File ${i + 1}`}</span>
+                    {typeof f.size === 'number' && (
+                      <span className={styles.fileSize}>{(f.size / 1024).toFixed(1)} KB</span>
+                    )}
+                  </div>
+                ))}
+              </div>
+            </>
+          )}
+        </Section>
 
-          <ContactCard title="Invoicing Contact" contact={{
-            name: `${formData.invoiceFirstName} ${formData.invoiceLastName}`,
-            phone: formData.invoicePhone,
-            email: formData.invoiceEmail,
-            address: `${formData.invoiceStreetAddress}, ${formData.invoiceCity}, ${formData.invoiceState}, ${formData.invoiceZipCode}`,
-          }} onEdit={() => goToStep(3)} />
-        </>
-      ), 3)}
+        <Section title="Services & Certifications" onEdit={() => goToStep?.(5)}>
+          <div className={styles.blockHead}>Services Provided</div>
+          <div className={styles.chipsWrap}>
+            {allServices.length === 0 && <span className={styles.muted}>No services selected.</span>}
+            {allServices.map((s, i) => (
+              <span key={`${s}-${i}`} className={styles.chip}>{s}</span>
+            ))}
+          </div>
 
-      {renderAccordion('Site Information', (
-        <>
-          <InfoRow label="Site Configuration" value={formData.multipleLocations === 'multiple' ? 'Multiple Locations' : 'Single Location'} />
-          {formData.uploadedFiles?.map((file, index) => (
-            <Typography key={index} mt={1}>{file.name}</Typography>
-          ))}
-        </>
-      ), 4)}
+          <div className={styles.blockHead} style={{ marginTop: 12 }}>Standards to Apply</div>
+          <div className={styles.chipsWrap}>
+            {(formData.selectedStandards || []).length === 0 && (
+              <span className={styles.muted}>No standards selected.</span>
+            )}
+            {(formData.selectedStandards || []).map((s) => (
+              <span key={s} className={styles.chipSm}>{s}</span>
+            ))}
+          </div>
 
-      {renderAccordion('Services & Certifications', (
-        <>
-          <Typography fontWeight="bold">Services Provided</Typography>
-          {renderChips([...Object.keys(formData.services), ...formData.otherServices])}
+          <div className={styles.grid2} style={{ marginTop: 12 }}>
+            <InfoRow label="Date of Application" value={fmt(formData.applicationDate)} />
+            <InfoRow label="Expiration Date of Current Stroke Certification" value={fmt(formData.strokeCertExpiry)} />
+          </div>
 
-          <Typography fontWeight="bold" mt={2}>Standards to Apply</Typography>
-          {renderChips(formData.selectedStandards)}
+          <div className={styles.blockHead} style={{ marginTop: 12 }}>
+            Dates of last twenty-five thrombolytic administrations
+          </div>
+          <div className={styles.chipsWrap}>
+            {(formData.thrombolytics || []).map((d) => (
+              <span key={d} className={styles.chip}>{fmt(d)}</span>
+            ))}
+            {(formData.thrombolytics || []).length === 0 && <span className={styles.muted}>—</span>}
+          </div>
 
-          <Grid container spacing={2} mt={1}>
-            <Grid item xs={12} sm={6}>
-              <InfoRow label="Date of Application" value={formData.applicationDate} />
-            </Grid>
-            <Grid item xs={12} sm={6}>
-              <InfoRow label="Stroke Certification Expiry" value={formData.strokeCertExpiry} />
-            </Grid>
-          </Grid>
+          <div className={styles.blockHead} style={{ marginTop: 12 }}>
+            Dates of last fifteen thrombectomies
+          </div>
+          <div className={styles.chipsWrap}>
+            {(formData.thrombectomies || []).map((d) => (
+              <span key={d} className={styles.chip}>{fmt(d)}</span>
+            ))}
+            {(formData.thrombectomies || []).length === 0 && <span className={styles.muted}>—</span>}
+          </div>
+        </Section>
 
-          <Typography fontWeight="bold" mt={2}>Thrombolytic Dates</Typography>
-          {renderChips(formData.thrombolytics)}
+        {/* Ready to Submit */}
+        <div className={styles.readyBox}>
+          <div className={styles.inputLabel} style={{ fontWeight: 700, marginBottom: 8 }}>
+            Ready to Submit?
+          </div>
 
-          <Typography fontWeight="bold" mt={2}>Thrombectomy Dates</Typography>
-          {renderChips(formData.thrombectomies)}
-        </>
-      ), 5)}
+          <label className={styles.checkRow}>
+            <input
+              type="checkbox"
+              checked={!!isCertified}
+              onChange={(e) => setIsCertified?.(e.target.checked)}
+            />
+            <span>
+              I certify that all information provided is accurate and complete to the best of my
+              knowledge
+            </span>
+          </label>
 
-      <Paper variant="outlined" sx={{ p: 3, mt: 4, borderRadius: 2 }}>
-        <Typography variant="subtitle1" sx={{ fontWeight: 'bold', mb: 1 }}>
-          Ready to Submit?
-        </Typography>
-        <FormControlLabel
-          control={<Checkbox checked={isCertified} onChange={(e) => setIsCertified(e.target.checked)} />}
-          label="I certify that all information provided is accurate and complete to the best of my knowledge"
-        />
-        <Typography variant="body2" sx={{ mt: 1 }}>
-          By submitting this form, you agree to our terms and conditions. DNV will review your application and contact you within 2–3 business days.
-        </Typography>
-        <Box display="flex" gap={2} mt={2} flexWrap="wrap">
-          <Button variant="outlined" onClick={onDownloadPDF}>Download as PDF</Button>
-          <Button variant="outlined" onClick={onDownloadCSV}>Export to CSV</Button>
-        </Box>
-      </Paper>
-    </Box>
-  );
-});
+          <div className={styles.muted} style={{ marginTop: 6 }}>
+            By submitting this form, you agree to our terms and conditions. DNV will review your
+            application and contact you within 2–3 business days.
+          </div>
+
+          <div className={styles.inlineRow} style={{ marginTop: 12, flexWrap: 'wrap' }}>
+            <button type="button" className={styles.btnOutline} onClick={onDownloadPDF}>
+              Download as PDF
+            </button>
+            <button type="button" className={styles.btnOutline} onClick={onDownloadCSV}>
+              Export to CSV
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+);
 
 export default Step6;
